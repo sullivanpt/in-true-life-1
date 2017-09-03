@@ -28,10 +28,22 @@ module.exports = {
   build: {
     vendor: ['vuetify'],
     extractCSS: true,
+    // turn off babel async transforms, they make debugging difficult
+    babel: {
+      presets: [['vue-app', {
+        envTargets: { // unsupported. See https://github.com/vuejs/babel-preset-vue-app/pull/9
+          node: 'current'
+          // uglify: true -- required for uglifyjs, but see https://github.com/mishoo/UglifyJS2/tree/harmony
+        }
+      }]]
+    },
     /*
     ** Run ESLINT on save
     */
     extend (config, ctx) {
+      // uglifyjs is ES5 only. See https://github.com/nuxt/nuxt.js/issues/250
+      config.plugins = config.plugins.filter((plugin) => plugin.constructor.name !== 'UglifyJsPlugin')
+
       if (ctx.dev && ctx.isClient) {
         config.module.rules.push({
           enforce: 'pre',
