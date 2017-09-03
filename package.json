@@ -7,11 +7,13 @@
     "dev": "nuxt",
     "build": "nuxt build",
     "start": "nuxt start",
-    "generate": "nuxt generate"
+    "generate": "nuxt generate",
+    "lint": "eslint --ext .js,.vue --ignore-path .gitignore .",
+    "precommit": "npm run lint"
   },
   "dependencies": {
-    "nuxt": "^1.0.0-rc6",
-    "vuetify": "^0.14.11"
+    "nuxt": "^1.0.0-rc8",
+    "vuetify": "^0.15.1"
   },
   "devDependencies": {
     "babel-eslint": "^7.2.3",
