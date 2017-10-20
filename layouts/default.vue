@@ -1,17 +1,19 @@
 <template>
-  <v-app light>
+  <v-app dark>
     <v-navigation-drawer
       persistent
       :mini-variant="miniVariant"
       :clipped="clipped"
       v-model="drawer"
-      enable-resize-watcher
+      app
     >
       <v-list>
         <v-list-tile
-          v-for="(item, i) in items"
-          :key="i"
+          router
           :to="item.to"
+          :key="i"
+          v-for="(item, i) in items"
+          exact
         >
           <v-list-tile-action>
             <v-icon v-html="item.icon"></v-icon>
@@ -22,8 +24,8 @@
         </v-list-tile>
       </v-list>
     </v-navigation-drawer>
-    <v-toolbar fixed>
-      <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
+    <v-toolbar fixed app :clipped-left="clipped">
+      <v-toolbar-side-icon @click="drawer = !drawer"></v-toolbar-side-icon>
       <v-btn
         icon
         @click.stop="miniVariant = !miniVariant"
@@ -52,17 +54,20 @@
       </v-btn>
     </v-toolbar>
     <main>
-      <v-container fluid>
-        <nuxt />
-      </v-container>
+      <v-content>
+        <v-container>
+          <nuxt />
+        </v-container>
+      </v-content>
     </main>
     <v-navigation-drawer
       temporary
       :right="right"
       v-model="rightDrawer"
+      app
     >
       <v-list>
-        <v-list-tile @click="right = !right">
+        <v-list-tile @click.native="right = !right">
           <v-list-tile-action>
             <v-icon light>compare_arrows</v-icon>
           </v-list-tile-action>
@@ -70,7 +75,7 @@
         </v-list-tile>
       </v-list>
     </v-navigation-drawer>
-    <v-footer :fixed="fixed">
+    <v-footer :fixed="fixed" app>
       <span>&copy; 2017</span>
     </v-footer>
   </v-app>
@@ -84,8 +89,8 @@ export default {
       drawer: true,
       fixed: false,
       items: [
-        { to: '/', title: 'Welcome', icon: 'apps' },
-        { to: '/inspire', title: 'Inspire', icon: 'bubble_chart' }
+        { icon: 'apps', title: 'Welcome', to: '/' },
+        { icon: 'bubble_chart', title: 'Inspire', to: '/inspire' }
       ],
       miniVariant: false,
       right: true,
