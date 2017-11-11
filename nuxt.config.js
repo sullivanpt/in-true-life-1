@@ -18,6 +18,10 @@ module.exports = {
   css: [
     '~/assets/style/app.styl'
   ],
+  serverMiddleware: [
+    // Will register file from project api directory to handle /api/* requires
+    { path: '/api', handler: '~/api/index.js' }
+  ],
   /*
   ** Customize the progress-bar color
   */
