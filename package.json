@@ -1,8 +1,13 @@
 {
-  "name": "true-vuetify-1",
+  "name": "in-true-life-1",
   "version": "1.0.0",
-  "description": "Nuxt.js + Vuetify.js project",
+  "description": "InTrue.Life for real friendships and nice people",
   "author": "Patrick Sullivan <sullivanpt@acm.org>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sullivanpt/in-true-life-1.git"
+  },
+  "license": "CC-BY-SA-4.0",
   "scripts": {
     "dev": "nuxt",
     "build": "nuxt build",
@@ -13,7 +18,7 @@
   },
   "dependencies": {
     "nuxt": "^1.0.0-rc11",
-    "vuetify": "^0.16.8"
+    "papercss": "^1.1.0"
   },
   "devDependencies": {
     "babel-eslint": "^7.2.3",
@@ -27,7 +32,7 @@
     "eslint-plugin-promise": "^3.5.0",
     "eslint-plugin-standard": "^3.0.1",
     "eslint-plugin-vue": "^3.13.0",
-    "stylus": "^0.54.5",
-    "stylus-loader": "^3.0.1"
+    "less": "^2.7.3",
+    "less-loader": "^4.0.5"
   }
 }

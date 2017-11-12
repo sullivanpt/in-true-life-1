@@ -3,20 +3,18 @@ module.exports = {
   ** Headers of the page
   */
   head: {
-    title: 'true-vuetify-1',
+    title: 'InTrue.Life',
     meta: [
       { charset: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { hid: 'description', name: 'description', content: 'Nuxt.js + Vuetify.js project' }
+      { hid: 'description', name: 'description', content: 'InTrue.Life for real friendships and nice people' }
     ],
     link: [
-      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-      { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons' }
+      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
     ]
   },
-  plugins: ['~/plugins/vuetify.js'],
   css: [
-    '~/assets/style/app.styl'
+    '~/assets/style/app.less'
   ],
   serverMiddleware: [
     // Will register file from project api directory to handle /api/* requires
@@ -30,7 +28,6 @@ module.exports = {
   ** Build configuration
   */
   build: {
-    vendor: ['vuetify'],
     extractCSS: true,
     /*
     ** Run ESLINT on save

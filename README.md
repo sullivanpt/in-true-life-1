@@ -1,6 +1,6 @@
-# true-vuetify-1
+# in-true-life-1
 
-> Nuxt.js + Vuetify.js project
+> Nuxt.js project to play with new personal interaction semantics on the web.
 
 ## Build Setup
 
@@ -19,4 +19,8 @@ $ npm start
 $ npm run generate
 ```
 
-For detailed explanation on how things work, check out the [Nuxt.js](https://github.com/nuxt/nuxt.js) and [Vuetify.js](https://vuetifyjs.com/) documentation.
+For detailed explanation on how things work, check out the [Nuxt.js](https://github.com/nuxt/nuxt.js).
+
+# License
+
+"CopyLeft" [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode).

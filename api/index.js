@@ -22,17 +22,18 @@ let users = [
  * linked to browser cookie (aka trackers)
  *
  * tracks activity metrics, emotional feedback, etc.
+ * can be associated with mutiple users, e.g. public terminal.
  *
  * maybe can have primary/preferred/most recently/frequently used profile?
  */
 let sessions = [
-  { id: 's1', name: 's1-name', aspects: { ipAddress: '1.2.3.4' } },
+  { id: 's1', name: 's1-name', aspects: [{ ts: 123456, ipAddress: '1.2.3.4' }] },
   {
     id: 's2',
     name: 's2-name',
     tags: ['robot', 'system'],
-    aspects: { user: 'u2' },
-    activity: [{ action: 'rate', value: 5 }]
+    aspects: [{ ts: 123456, user: 'u2' }, { ts: 133456, user: 'u1' }],
+    activity: [{ ts: 123456, action: 'rate', value: 5 }]
   },
   { id: 's3', name: 's3-name' }
 ]

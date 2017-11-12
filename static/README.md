@@ -9,3 +9,8 @@ More information about the usage of this directory in the documentation:
 https://nuxtjs.org/guide/assets#static
 
 **This directory is not required, you can delete it if you don't want to use it.**
+
+# attribution
+
+https://emojipedia.org/fire/
+http://www.publicdomainpictures.net/view-image.php?image=188689&picture=dog-dalmatian-blue-sky
