@@ -1,6 +1,9 @@
 // API route stubs to return sample data
+'use strict'
 
 const app = require('express')()
+const bodyParser = require('body-parser')
+const uuidV4 = require('uuid/v4')
 
 /**
  * private verified person identity tied to a collection of sessions (aka members)
@@ -124,6 +127,13 @@ function restify (resource, list) {
 /**
  * REST API mocks for accessing mock data
  */
+
+app.use(bodyParser.json({ type: () => true }))
+app.use(function apiLogger (req, res, next) {
+  console.log(`API ${req.method} ${req.originalUrl}`, req.body)
+  next()
+})
+
 restify('users', users)
 restify('sessions', sessions)
 restify('messages', messages)
@@ -131,8 +141,16 @@ restify('auras', auras)
 restify('profiles', profiles)
 restify('comments', comments)
 
+app.post('/sessions', (req, res) => {
+  let session = {
+    id: uuidV4(), // TODO: uuid is too predictable for use as a session key
+    aspects: req.body // TODO: sanitize this
+  }
+  sessions.push(session)
+  res.status(201).json(session) // TODO: filter private data (aspects, activity, etc.)
+})
+
 app.get('/everything', (req, res) => {
-  console.log('here')
   res.json({
     me: users[1], // TODO: restrict access by active session
     sessions, // TODO: filter private data (aspects, activity, etc.)
@@ -142,5 +160,9 @@ app.get('/everything', (req, res) => {
     comments
   })
 })
+
+// All other API routes return a 404. to make debugging easier
+app.route('/*')
+  .all((req, res) => { res.status(404).end() })
 
 module.exports = app

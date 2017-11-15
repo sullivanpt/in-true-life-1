@@ -1,3 +1,10 @@
+let cookieParser = require('cookie-parser')
+
+/**
+ * Define this environment variable to set the session cookie secret
+ */
+const COOKIE_SECRET = process.env.COOKIE_SECRET || 'keyboard-catastrophe'
+
 module.exports = {
   /*
   ** Headers of the page
@@ -18,7 +25,11 @@ module.exports = {
   ],
   serverMiddleware: [
     // Will register file from project api directory to handle /api/* requires
-    { path: '/api', handler: '~/api/index.js' }
+    { path: '/api', handler: '~/server-middleware/api/index.js' },
+    // use cookies to attach a session object to every non API request
+    // make recursive calls to API, so we exclude API to avoid infinite loop
+    cookieParser(COOKIE_SECRET),
+    '~/server-middleware/session/index.js'
   ],
   /*
   ** Customize the progress-bar color
