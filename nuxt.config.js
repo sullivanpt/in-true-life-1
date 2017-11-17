@@ -1,10 +1,3 @@
-let cookieParser = require('cookie-parser')
-
-/**
- * Define this environment variable to set the session cookie secret
- */
-const COOKIE_SECRET = process.env.COOKIE_SECRET || 'keyboard-catastrophe'
-
 module.exports = {
   /*
   ** Headers of the page
@@ -24,11 +17,13 @@ module.exports = {
     '~/assets/style/app.less'
   ],
   serverMiddleware: [
-    // Will register file from project api directory to handle /api/* requires
+    // See API authentication design comments at top of sever-middleware/api/auth.js file
+    // our API expects authorization to be in a cookie
+    // if we enter the API handler the request will end here in all circumstances
     { path: '/api', handler: '~/server-middleware/api/index.js' },
-    // use cookies to attach a session object to every non API request
-    // make recursive calls to API, so we exclude API to avoid infinite loop
-    cookieParser(COOKIE_SECRET),
+    // from here onwards we make recursive calls to '/api'.
+    // the following enforces a valid API session exists for the remainder of the request,
+    // creating one if needed and returning an API token in a cookie.
     '~/server-middleware/session/index.js'
   ],
   /*

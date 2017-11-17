@@ -1,7 +1,6 @@
 // nuxt seems to be lacking some express js request response methods
 'use strict'
 
-const sign = require('cookie-signature').sign // TODO: explicit in package.json
 const cookie = require('cookie') // TODO: explicit in package.json
 
 /**
@@ -19,41 +18,15 @@ function reqIp (req) {
 exports.reqIp = reqIp
 
 /**
- * TODO: res.cookie is broken in nuxt
- * See https://github.com/expressjs/express/blob/master/lib/response.js
+ * Helper to mimic the way express res.cookie prepares Set-Cookie header
+ * Does not support signed cookie
  */
-function resCookie (req, res, name, value, options) {
-  function appendHeader (res, field, val) {
-    var prev = res.getHeader(field)
-    var value = val
-
-    if (prev) {
-      // concat the new and prev vals
-      value = Array.isArray(prev) ? prev.concat(val)
-        : Array.isArray(val) ? [prev].concat(val)
-          : [prev, val]
-    }
-
-    return res.setHeader(field, value)
-  }
-
-  if (res.cookie) return res.cookie(name, value, options)
-
+function cookieSerialize (name, value, options) {
   var opts = Object.assign({}, options)
-  var secret = req.secret
-  var signed = opts.signed
-
-  if (signed && !secret) {
-    throw new Error('cookieParser("secret") required for signed cookies')
-  }
 
   var val = typeof value === 'object'
     ? 'j:' + JSON.stringify(value)
     : String(value)
-
-  if (signed) {
-    val = 's:' + sign(val, secret)
-  }
 
   if ('maxAge' in opts) {
     opts.expires = new Date(Date.now() + opts.maxAge)
@@ -63,6 +36,26 @@ function resCookie (req, res, name, value, options) {
   if (opts.path == null) {
     opts.path = '/'
   }
-  appendHeader(res, 'Set-Cookie', cookie.serialize(name, String(val), opts))
+
+  return cookie.serialize(name, String(val), opts)
 }
-exports.resCookie = resCookie
+exports.cookieSerialize = cookieSerialize
+
+/**
+ * Extracted from Express Response.merge
+ * See https://github.com/expressjs/express/blob/master/lib/response.js
+ */
+function appendHeader (res, field, val) {
+  var prev = res.getHeader(field)
+  var value = val
+
+  if (prev) {
+    // concat the new and prev vals
+    value = Array.isArray(prev) ? prev.concat(val)
+      : Array.isArray(val) ? [prev].concat(val)
+        : [prev, val]
+  }
+
+  return res.setHeader(field, value)
+}
+exports.appendHeader = appendHeader

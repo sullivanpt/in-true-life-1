@@ -2,8 +2,10 @@
 'use strict'
 
 const app = require('express')()
+const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 const uuidV4 = require('uuid/v4')
+const { reqSessionSecret, findAuthorizedSession, formatMeResponse } = require('./auth')
 
 /**
  * private verified person identity tied to a collection of sessions (aka members)
@@ -30,15 +32,16 @@ let users = [
  * maybe can have primary/preferred/most recently/frequently used profile?
  */
 let sessions = [
-  { id: 's1', name: 's1-name', aspects: [{ ts: 123456, ipAddress: '1.2.3.4' }] },
+  { id: 's1', secret: 's1-secret', name: 's1-name', aspects: [{ ts: 123456, ipAddress: '1.2.3.4' }] },
   {
-    id: 's2',
-    name: 's2-name',
+    id: 's2', // the public key for read access to the session
+    secret: 's2-secret', // controls update access and must only be shared with the session owner
+    name: 's2-name', // the public display name of the session
     tags: ['robot', 'system'],
-    aspects: [{ ts: 123456, user: 'u2' }, { ts: 133456, user: 'u1' }],
-    activity: [{ ts: 123456, action: 'rate', value: 5 }]
+    aspects: [{ ts: 123456, user: 'u2' }, { ts: 133456, user: 'u1' }], // private time ordered list of unique user agent properties
+    activity: [{ ts: 123456, action: 'rate', value: 5 }] // private time ordered list of metrics about this session, usually user actions
   },
-  { id: 's3', name: 's3-name' }
+  { id: 's3', secret: 's3-secret', name: 's3-name' }
 ]
 
 /**
@@ -113,6 +116,14 @@ let comments = [
 ]
 
 /**
+ * generate a short but statistically probably unique ID string. See http://stackoverflow.com/a/8084248
+ * TODO: use thematic dictionary instead, e.g. cat breeds....
+ */
+function generateTracker () {
+  return (Math.random() + 1).toString(36).substr(2, 5)
+}
+
+/**
  * Helper to generate REST GET list and GET instance end points
  */
 function restify (resource, list) {
@@ -128,9 +139,49 @@ function restify (resource, list) {
  * REST API mocks for accessing mock data
  */
 
+app.use(cookieParser())
 app.use(bodyParser.json({ type: () => true }))
 app.use(function apiLogger (req, res, next) {
-  console.log(`API ${req.method} ${req.originalUrl}`, req.body)
+  console.log(`API ${req.method} ${req.originalUrl}`, reqSessionSecret(req), req.body)
+  next()
+})
+
+// this end point will accept a missing or invalid session secret and return a new or prexisting valid one
+app.post('/me/restore', (req, res) => {
+  let refresh
+  let session = findAuthorizedSession(req, sessions) // TODO: do we need exception handler for rate limiter reached
+  if (!session) {
+    refresh = true
+    session = {
+      id: 's-' + uuidV4(),
+      name: 's-' + generateTracker(),
+      secret: uuidV4(), // TODO: uuid is too predictable for use as a session token
+      aspects: [Object.assign({ ts: Date.now() }, req.body)] // TODO: sanitize this
+    }
+    sessions.push(session)
+    res.status(201)
+  } else {
+    // append changed aspects. TODO: maybe debounce or rate limit aspect changes?
+    let lastAspect = session.aspects[session.aspects.length - 1]
+    let aspect
+    for (let key in req.body) {
+      if (req.body[key] !== lastAspect[key]) {
+        aspect = aspect || { ts: Date.now() }
+        aspect[key] = res.body[key]
+      }
+    }
+    if (aspect) session.aspects.push(aspect)
+  }
+  res.json(formatMeResponse(session, { // TODO: filter private data (aspects, activity, etc.)
+    refresh,
+    secure: req.body.secure // cookie SSL only determined by our caller (Nuxt UI)
+  }))
+})
+
+// this middleware attaches a valid session at req.session or throws an exception (status 401)
+app.use(function apiCheckAuth (req, res, next) {
+  req.session = findAuthorizedSession(req, sessions) // TODO: do we need exception handler for rate limiter reached?
+  if (!req.session) return res.status(401).end()
   next()
 })
 
@@ -141,19 +192,10 @@ restify('auras', auras)
 restify('profiles', profiles)
 restify('comments', comments)
 
-app.post('/sessions', (req, res) => {
-  let session = {
-    id: uuidV4(), // TODO: uuid is too predictable for use as a session key
-    aspects: req.body // TODO: sanitize this
-  }
-  sessions.push(session)
-  res.status(201).json(session) // TODO: filter private data (aspects, activity, etc.)
-})
-
 app.get('/everything', (req, res) => {
   res.json({
     me: users[1], // TODO: restrict access by active session
-    sessions, // TODO: filter private data (aspects, activity, etc.)
+    sessions, // TODO: filter private data (secret, aspects, activity, etc.)
     messages,
     auras,
     profiles,
@@ -161,7 +203,7 @@ app.get('/everything', (req, res) => {
   })
 })
 
-// All other API routes return a 404. to make debugging easier
+// All other API routes return a 404 to prevent infinite recursion with Nuxt UI and to make debugging easier
 app.route('/*')
   .all((req, res) => { res.status(404).end() })
 
