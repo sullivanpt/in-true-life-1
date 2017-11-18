@@ -18,6 +18,38 @@ function reqIp (req) {
 exports.reqIp = reqIp
 
 /**
+ * helper to mimic req.protocol
+ */
+function reqProtocol (req) {
+  const trustProxy = true // TODO: make this a setting?
+  var proto = req.connection.encrypted
+    ? 'https'
+    : 'http'
+
+  if (!trustProxy) {
+    return proto
+  }
+
+  // Note: X-Forwarded-Proto is normally only ever a
+  //       single value, but this is to be safe.
+  var header = req.header('x-forwarded-proto') || proto
+  var index = header.indexOf(',')
+
+  return index !== -1
+    ? header.substring(0, index).trim()
+    : header.trim()
+}
+exports.reqProtocol = reqProtocol
+
+/**
+ * helper to mimic req.secure
+ */
+function reqSecure (req) {
+  return reqProtocol === 'https'
+}
+exports.reqSecure = reqSecure
+
+/**
  * Helper to mimic the way express res.cookie prepares Set-Cookie header
  * Does not support signed cookie
  */

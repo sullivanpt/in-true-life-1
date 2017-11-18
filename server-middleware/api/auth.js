@@ -49,41 +49,85 @@
  * Observations:
  * - if cookie expires all client action fails until client gets a new cookie (full page refresh -- can we do this with static image too?)
  * - if parallel non-authenticated UI requests hit the server its a race condition to see which new cookie the client ends with
+ *
+ * TODO: XSRF (CSRF) design:
+ * - Use SOP JS custom header "X-Requested-With: ", combined with checking Origin and Referer headers.
+ *   See https://www.owasp.org/index.php/Cross-Site_Request_Forgery_%28CSRF%29_Prevention_Cheat_Sheet#Protecting_REST_Services:_Use_of_Custom_Request_Headers
+ *   And https://www.owasp.org/index.php/Cross-Site_Request_Forgery_%28CSRF%29_Prevention_Cheat_Sheet#Identifying_Source_Origin
+ *
+ * TODO: user authentication design:
+ * - Existing session tracks devices, not users. Want a user behavior that limits sensitive operations to:
+ * -- a short period of time
+ * -- until browser closes, one browser usage session at a time
+ * -- until explicit logout
+ * -- until implicit logout by changing devices, one device at a time
+ * Suggestion:
+ * - use 'eid' browser cookie (session lifetime, no expiration) to detect browser close
+ * - add 'eid' when saving evidence.
+ *   Problem is what to do with old eid when invalid session rebuilt, should we save it in evidence, or at least warn if it isn't already in same session?
+ * - "logout" user when evidence change (IP, agent, eid, etc.) or are "too old".
  */
 'use strict'
 
 const { cookieSerialize } = require('../helpers/express-patches')
 
 let cookieMaxAge = 365 * 24 * 60 * 60 * 1000 // 1 year (i.e. forever, longer tracks the user agent longer)
-let cookieName = 'session'
+let sidCookieName = 'sid'
+let eidCookieName = 'eid'
 
 /**
  * Reformats the 'me' session response to so the caller (Nuxt UI) has easy access to the valid session cookie
+ * Does not send most of the actual session data, since it isn't needed by caller here.
  * options:
  * - secure cookie should be SSL only
- * - refresh caller should save the new cookie on the client
- * TODO: consider forcing a refresh based on session create and cookieMaxAge
+ * - newSid caller should save the new api/sid cookie on the client
+ * - newEid caller should save the new eid cookie on the client
+ * TODO: consider forcing a save based on session create and cookieMaxAge
  */
-function formatMeResponse (session, options) {
-  return Object.assign({
-    refresh: options.refresh,
-    cookie: cookieSerialize(cookieName, session.secret, {
-      maxAge: cookieMaxAge,
+function formatMeRestore (session, options) {
+  let sidCookie = cookieSerialize(sidCookieName, session.sid, {
+    maxAge: cookieMaxAge,
+    httpOnly: true,
+    secure: options.secure
+  })
+  let cookie = [sidCookie.split(';')[0]]
+  let setCookie = options.newSid ? [sidCookie] : []
+  if (options.eid) {
+    let eidCookie = cookieSerialize(eidCookieName, options.eid, {
       httpOnly: true,
       secure: options.secure
     })
-  }, session)
+    cookie.push(eidCookie.split(';')[0])
+    if (options.newEid) setCookie.push(eidCookie)
+  }
+  cookie = cookie.join('; ')
+  setCookie = (setCookie.length >= 2) ? setCookie : setCookie[0]
+  return {
+    id: session.id,
+    name: session.name,
+    cookie, // simulates 'Cookie' header value
+    setCookie // suitable for setHeader('Set-Cookie', string|Array[string])
+  }
 }
-exports.formatMeResponse = formatMeResponse
+exports.formatMeRestore = formatMeRestore
 
 /**
- * Helper to extract the session secret from the request.
+ * Helper to extract the (secret) session sid from the request.
  * Typically this is in a cookie, and we require cookie-parser has already run.
  */
-function reqSessionSecret (req) {
-  return req.cookies[cookieName] || undefined
+function reqSessionSid (req) {
+  return req.cookies[sidCookieName] || undefined
 }
-exports.reqSessionSecret = reqSessionSecret
+exports.reqSessionSid = reqSessionSid
+
+/**
+ * Helper to extract the (secret) evidence eid from the request.
+ * Typically this is in a cookie, and we require cookie-parser has already run.
+ */
+function reqSessionEid (req) {
+  return req.cookies[eidCookieName] || undefined
+}
+exports.reqSessionEid = reqSessionEid
 
 /**
  * Helper to find the session that matches the supplied key
@@ -91,7 +135,7 @@ exports.reqSessionSecret = reqSessionSecret
  * TODO: check session not expired, etc.
  */
 function findAuthorizedSession (req, sessions) {
-  const secret = reqSessionSecret(req)
-  return sessions.find(obj => obj.secret && obj.secret === secret)
+  const sid = reqSessionSid(req)
+  return sessions.find(obj => obj.sid && obj.sid === sid)
 }
 exports.findAuthorizedSession = findAuthorizedSession

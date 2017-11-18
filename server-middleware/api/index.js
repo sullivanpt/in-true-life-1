@@ -5,7 +5,8 @@ const app = require('express')()
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 const uuidV4 = require('uuid/v4')
-const { reqSessionSecret, findAuthorizedSession, formatMeResponse } = require('./auth')
+const uid = require('uid-safe')
+const { reqSessionEid, findAuthorizedSession, formatMeRestore } = require('./auth')
 
 /**
  * private verified person identity tied to a collection of sessions (aka members)
@@ -32,16 +33,16 @@ let users = [
  * maybe can have primary/preferred/most recently/frequently used profile?
  */
 let sessions = [
-  { id: 's1', secret: 's1-secret', name: 's1-name', aspects: [{ ts: 123456, ipAddress: '1.2.3.4' }] },
+  { id: 's1', sid: 's1-sid', name: 's1-name', evidence: [{ ts: 123456, eid: 's1-e1', ipAddress: '1.2.3.4' }] },
   {
     id: 's2', // the public key for read access to the session
-    secret: 's2-secret', // controls update access and must only be shared with the session owner
+    sid: 's2-sid', // controls update access and must only be shared with the session owner
     name: 's2-name', // the public display name of the session
     tags: ['robot', 'system'],
-    aspects: [{ ts: 123456, user: 'u2' }, { ts: 133456, user: 'u1' }], // private time ordered list of unique user agent properties
+    evidence: [{ ts: 123456, eid: 's2-e2', user: 'u2' }, { ts: 133456, eid: 's2-e3', user: 'u1' }], // private time ordered list of unique user agent properties
     activity: [{ ts: 123456, action: 'rate', value: 5 }] // private time ordered list of metrics about this session, usually user actions
   },
-  { id: 's3', secret: 's3-secret', name: 's3-name' }
+  { id: 's3', sid: 's3-sid', name: 's3-name' }
 ]
 
 /**
@@ -58,10 +59,10 @@ let messages = [
 /**
  * unverified person identity tied to a collection of sessions
  * - sessions can be in multiple auras with differing probabilities
- * - created by aspect algorithms
+ * - created by evidence algorithms
  * -- known user login (100% probability, only reduced by fraud)
  * -- known user claims sessions retroactively (typically not 100%)
- * -- aspect matching like IP or geo or biometrics
+ * -- evidence matching like IP or geo or biometrics
  */
 let auras = [
   { id: 'a1', name: 'a1-name', sessions: ['s1', 's2'] },
@@ -142,48 +143,85 @@ function restify (resource, list) {
 app.use(cookieParser())
 app.use(bodyParser.json({ type: () => true }))
 app.use(function apiLogger (req, res, next) {
-  console.log(`API ${req.method} ${req.originalUrl}`, reqSessionSecret(req), req.body)
+  // TODO: log session.name (not cookies/eidsid), use morgan to defer log to processing end
+  // TODO: log request and response json
+  console.log(`API ${req.method} ${req.originalUrl}`, req.headers['cookie'], reqSessionEid(req), req.body)
   next()
 })
 
-// this end point will accept a missing or invalid session secret and return a new or prexisting valid one
+// this end point will accept a missing or invalid session sid and return a new or prexisting valid one
+// Attaches session name as req.logId for tracking sessions in logging
+// include eid cookie value in evidence (existing or newly generated)
+// NOTE: authenticated user gets added in evidence sometimes too.
 app.post('/me/restore', (req, res) => {
-  let refresh
+  let newSid, newEid
+  let eid = reqSessionEid(req) // by default we pass the eid through
   let session = findAuthorizedSession(req, sessions) // TODO: do we need exception handler for rate limiter reached
   if (!session) {
-    refresh = true
+    newSid = true
+    newEid = true
+    eid = uid.sync(24) // TODO: do we really want a synchronous call here?
     session = {
       id: 's-' + uuidV4(),
       name: 's-' + generateTracker(),
-      secret: uuidV4(), // TODO: uuid is too predictable for use as a session token
-      aspects: [Object.assign({ ts: Date.now() }, req.body)] // TODO: sanitize this
+      sid: uid.sync(24), // TODO: do we really want a synchronous call here?
+      evidence: [Object.assign({
+        ts: Date.now(),
+        eid
+      }, req.body)] // TODO: sanitize this
     }
+    req.logId = session.name
     sessions.push(session)
     res.status(201)
   } else {
-    // append changed aspects. TODO: maybe debounce or rate limit aspect changes?
-    let lastAspect = session.aspects[session.aspects.length - 1]
-    let aspect
-    for (let key in req.body) {
-      if (req.body[key] !== lastAspect[key]) {
-        aspect = aspect || { ts: Date.now() }
-        aspect[key] = res.body[key]
+    req.logId = session.name
+    // append changed evidence.
+    // note, evidence omitted from subsequent requests do not generate a change.
+    // TODO: maybe debounce or rate limit evidence changes?
+    // protect against multiple simultaneous sessions (copied sid/eid, unpredictable evidence, etc.)
+    // maybe limit to 6 changes per 6 hours and merge with last 6 changes
+    // if limit exceeded do we silently ignore evidence or refuse to return session
+    let newEvidence = Object.assign({
+      eid: eid || '+' // this tests if "short life" eid cookie value has changed or is undefined
+    }, req.body)
+    let lastEvidence = session.evidence[session.evidence.length - 1]
+    let evidence
+    for (let key in newEvidence) {
+      if (newEvidence[key] !== lastEvidence[key]) {
+        evidence = evidence || {
+          ts: Date.now(),
+          eid: uid.sync(24) // TODO: do we really want a synchronous call here?
+        }
+        if (key !== 'eid') evidence[key] = newEvidence[key]
       }
     }
-    if (aspect) session.aspects.push(aspect)
+    if (evidence) {
+      newEid = true
+      eid = evidence.eid
+      session.evidence.push(evidence)
+    }
   }
-  res.json(formatMeResponse(session, { // TODO: filter private data (aspects, activity, etc.)
-    refresh,
+  res.json(formatMeRestore(session, {
+    newSid,
+    newEid,
+    eid,
     secure: req.body.secure // cookie SSL only determined by our caller (Nuxt UI)
   }))
 })
 
 // this middleware attaches a valid session at req.session or throws an exception (status 401)
+// Attaches session name as req.logId for tracking sessions in logging
 app.use(function apiCheckAuth (req, res, next) {
   req.session = findAuthorizedSession(req, sessions) // TODO: do we need exception handler for rate limiter reached?
   if (!req.session) return res.status(401).end()
+  req.logId = req.session.name
   next()
 })
+
+// TODO: CSRF protection middleware on:
+// if origin present much match host / X-Forwarded-Host,
+// X-Requested-With must be XMLHttpRequest
+// TODO: sensitive access middleware on some routes based on eid, etc.
 
 restify('users', users)
 restify('sessions', sessions)
@@ -195,7 +233,7 @@ restify('comments', comments)
 app.get('/everything', (req, res) => {
   res.json({
     me: users[1], // TODO: restrict access by active session
-    sessions, // TODO: filter private data (secret, aspects, activity, etc.)
+    sessions, // TODO: filter private data (sid, evidence, activity, etc.)
     messages,
     auras,
     profiles,
@@ -206,5 +244,11 @@ app.get('/everything', (req, res) => {
 // All other API routes return a 404 to prevent infinite recursion with Nuxt UI and to make debugging easier
 app.route('/*')
   .all((req, res) => { res.status(404).end() })
+
+// Simplify debugging by logging developer errors
+app.use(function (err, req, res, next) {
+  console.error('API Error', req.logId, err.stack)
+  res.status(500).end()
+})
 
 module.exports = app
