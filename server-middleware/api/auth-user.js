@@ -3,8 +3,8 @@
 'use strict'
 
 const router = require('express').Router()
-const { reqSessionEid } = require('./auth')
-const models = require('models')
+const { reqSessionEk } = require('./auth')
+const models = require('./models')
 
 // this end point purposely removes session current authorization to private data and current association
 // returns status 204 on success
@@ -16,7 +16,7 @@ router.post('/logout', (req, res) => {
   if (!user) throw new Error('invalid session.user')
   req.session.user = null
   user.session = null
-  // TODO: shall we issue new eid too? probably yes
+  // TODO: shall we issue new eK too? probably yes
   res.status(204).end() // TODO: do we need/want to request client do a full page refresh here?
 })
 
@@ -54,14 +54,14 @@ router.post('/password', (req, res) => {
   if (!user) return res.status(401).end()
   let hash = req.body.password // TODO: sanitize input, and a real password hashing scheme
   if (!user.hash || user.hash !== hash) return res.status(401).end() // TODO: constant time secure-compare
-  // TODO: do we need to double check sid and/or eid don't get swapped out during the two-stage auth?
+  // TODO: do we need to double check sk and/or ek don't get swapped out during the two-stage auth?
 
   // user credentials are verified, update session data
-  // TODO: shall we issue new eid too? probably yes
+  // TODO: shall we issue new ek too? probably yes
   // TODO: evidence in the next /me/restore is going to cause this new evidence to get discarded
   req.session.evidence.push({
     ts: Date.now(),
-    eid: reqSessionEid(req),
+    ek: reqSessionEk(req),
     user: user.id
   })
   req.session.user = user.id

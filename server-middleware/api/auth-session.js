@@ -2,8 +2,8 @@
 'use strict'
 const uuidV4 = require('uuid/v4')
 const uid = require('uid-safe')
-const { reqSessionEid, findAuthorizedSession, formatMeRestore } = require('./auth')
-const models = require('models')
+const { reqSessionEk, findAuthorizedSession, formatMeRestore } = require('./auth')
+const models = require('./models')
 
 /**
  * generate a short but statistically probably unique ID string. See http://stackoverflow.com/a/8084248
@@ -14,25 +14,25 @@ function generateTracker () {
 }
 
 // expects to be mounted at POST '/me/restore'
-// this end point will accept a missing or invalid session sid and return a new or prexisting valid one
+// this end point will accept a missing or invalid session sk and return a new or prexisting valid one
 // Attaches session name as req.logId for tracking sessions in logging
-// include eid cookie value in evidence (existing or newly generated)
+// include ek cookie value in evidence (existing or newly generated)
 // NOTE: authenticated user gets added in evidence sometimes too.
 function meRestoreHandler (req, res) {
-  let newSid, newEid
-  let eid = reqSessionEid(req) // by default we pass the eid through
+  let newSk, newEk
+  let ek = reqSessionEk(req) // by default we pass the ek through
   let session = findAuthorizedSession(req, models.sessions) // TODO: do we need exception handler for rate limiter reached
   if (!session) {
-    newSid = true
-    newEid = true
-    eid = uid.sync(24) // TODO: do we really want a synchronous call here?
+    newSk = true
+    newEk = true
+    ek = uid.sync(24) // TODO: do we really want a synchronous call here?
     session = {
       id: 's-' + uuidV4(),
       name: 's-' + generateTracker(),
-      sid: uid.sync(24), // TODO: do we really want a synchronous call here?
+      sk: uid.sync(24), // TODO: do we really want a synchronous call here?
       evidence: [Object.assign({
         ts: Date.now(),
-        eid
+        ek
       }, req.body)] // TODO: sanitize this
     }
     req.logId = session.name
@@ -43,11 +43,11 @@ function meRestoreHandler (req, res) {
     // append changed evidence.
     // note, evidence omitted from subsequent requests do not generate a change.
     // TODO: maybe debounce or rate limit evidence changes?
-    // protect against multiple simultaneous sessions (copied sid/eid, unpredictable evidence, etc.)
+    // protect against multiple simultaneous sessions (copied sk/ek, unpredictable evidence, etc.)
     // maybe limit to 6 changes per 6 hours and merge with last 6 changes
     // if limit exceeded do we silently ignore evidence or refuse to return session
     let newEvidence = Object.assign({
-      eid: eid || '+' // this tests if "short life" eid cookie value has changed or is undefined
+      ek: ek || '+' // this tests if "short life" ek cookie value has changed or is undefined
     }, req.body)
     let lastEvidence = session.evidence[session.evidence.length - 1]
     let evidence
@@ -55,23 +55,23 @@ function meRestoreHandler (req, res) {
       if (newEvidence[key] !== lastEvidence[key]) {
         evidence = evidence || {
           ts: Date.now(),
-          eid: uid.sync(24) // TODO: do we really want a synchronous call here?
+          ek: uid.sync(24) // TODO: do we really want a synchronous call here?
         }
-        if (key !== 'eid') evidence[key] = newEvidence[key]
+        if (key !== 'ek') evidence[key] = newEvidence[key]
       }
     }
     if (evidence) {
-      // TODO: debounce new eid, alleviate refresh race conditions, enable ajax login followed by refresh
-      // when received previous eid, only eid is different, new eid was issued in last 30? seconds
-      newEid = true
-      eid = evidence.eid
+      // TODO: debounce new ek, alleviate refresh race conditions, enable ajax login followed by refresh
+      // when received previous ek, only ek is different, new ek was issued in last 30? seconds
+      newEk = true
+      ek = evidence.ek
       session.evidence.push(evidence)
     }
   }
   res.json(formatMeRestore(session, {
-    newSid,
-    newEid,
-    eid,
+    newSk,
+    newEk,
+    ek,
     secure: req.body.secure // cookie SSL only determined by our caller (Nuxt UI)
   }))
 }

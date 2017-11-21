@@ -26,17 +26,17 @@ exports.users = users
  * can be associated with mutiple users, e.g. public terminal.
  */
 let sessions = [
-  { id: 's1', sid: 's1-sid', name: 's1-name', evidence: [{ ts: 123456, eid: 's1-e1', ipAddress: '1.2.3.4' }] },
+  { id: 's1', sk: 's1-sk', name: 's1-name', evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }] },
   {
     id: 's2', // the public key for read access to the session
-    sid: 's2-sid', // controls update access and must only be shared with the session owner
+    sk: 's2-sk', // controls update access and must only be shared with the session owner
     name: 's2-name', // the public display name of the session
     tags: ['robot', 'system'],
     user: 'u1', // most recently associated user or falsey if purposely logged out (primarily caches whats already in evidence)
-    evidence: [{ ts: 123456, eid: 's2-e2', user: 'u2' }, { ts: 133456, eid: 's2-e3', user: 'u1' }], // private time ordered list of unique user agent properties
+    evidence: [{ ts: 123456, ek: 's2-ek2', user: 'u2' }, { ts: 133456, ek: 's2-ek3', user: 'u1' }], // private time ordered list of unique user agent properties
     activity: [{ ts: 123456, action: 'rate', value: 5 }] // private time ordered list of metrics about this session, usually user actions
   },
-  { id: 's3', sid: 's3-sid', name: 's3-name' }
+  { id: 's3', sk: 's3-sk', name: 's3-name' }
 ]
 exports.sessions = sessions
 

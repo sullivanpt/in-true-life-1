@@ -4,10 +4,10 @@
 const app = require('express')()
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
-const { reqSessionEid, hasAccessPrivate } = require('./auth')
+const { reqSessionEk, hasAccessPrivate } = require('./auth')
 const { meRestoreHandler, meVerifySession } = require('./auth-session')
 const authUser = require('./auth-user')
-const models = require('models')
+const models = require('./models')
 
 /**
  * Helper to generate REST GET list and GET instance end points
@@ -28,13 +28,13 @@ function restify (resource, list) {
 app.use(cookieParser())
 app.use(bodyParser.json({ type: () => true }))
 app.use(function apiLogger (req, res, next) {
-  // TODO: log session.name (not cookies/eidsid), use morgan to defer log to processing end
+  // TODO: log session.name (not cookies/ek/sk), use morgan to defer log to processing end
   // TODO: log request and response json
-  console.log(`API ${req.method} ${req.originalUrl}`, req.headers['cookie'], reqSessionEid(req), req.body)
+  console.log(`API ${req.method} ${req.originalUrl}`, req.headers['cookie'], reqSessionEk(req), req.body)
   next()
 })
 
-// this end point will accept a missing or invalid session sid and return a new or prexisting valid one
+// this end point will accept a missing or invalid session sk and return a new or prexisting valid one
 // Attaches session name as req.logId for tracking sessions in logging
 app.post('/me/restore', meRestoreHandler)
 
@@ -45,7 +45,7 @@ app.use(meVerifySession)
 // TODO: CSRF protection middleware on:
 // if origin present much match host / X-Forwarded-Host,
 // X-Requested-With must be XMLHttpRequest
-// TODO: sensitive access middleware on some routes based on eid, etc.
+// TODO: sensitive access middleware on some routes based on ek, etc.
 
 // these end points change the user currently associated with the session
 // e.g. GET '/me/user' POST '/me/user/logout' POST '/me/user/strategies' POST '/me/user/password'

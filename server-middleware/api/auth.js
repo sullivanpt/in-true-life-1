@@ -62,45 +62,45 @@
  * -- until explicit logout
  * -- until implicit logout by changing devices, one device at a time
  * Suggestion:
- * - use 'eid' browser cookie (session lifetime, no expiration) to detect browser close
- * - add 'eid' when saving evidence.
- *   Problem is what to do with old eid when invalid session rebuilt, should we save it in evidence, or at least warn if it isn't already in same session?
- * - "logout" user when evidence change (IP, agent, eid, etc.) or are "too old".
+ * - use 'ek' browser cookie (session lifetime, no expiration) to detect browser close
+ * - add 'ek' when saving evidence.
+ *   Problem is what to do with old ek when invalid session rebuilt, should we save it in evidence, or at least warn if it isn't already in same session?
+ * - "logout" user when evidence change (IP, agent, ek, etc.) or are "too old".
  */
 'use strict'
 
 const { cookieSerialize } = require('../helpers/express-patches')
 
 let cookieMaxAge = 365 * 24 * 60 * 60 * 1000 // 1 year (i.e. forever, longer tracks the user agent longer)
-let sidCookieName = 'sid'
-let eidCookieName = 'eid'
+let skCookieName = 'sk' // secret sessIon key
+let ekCookieName = 'ek' // secret evidence key
 
-let eidPrivateMaxElapsedMs = 15 * 60 * 60 * 1000 // 15 minutes until must login again to see private data
+let ekPrivateMaxElapsedMs = 15 * 60 * 60 * 1000 // 15 minutes until must login again to see private data
 
 /**
  * Reformats the 'me' session response to so the caller (Nuxt UI) has easy access to the valid session cookie
  * Does not send most of the actual session data, since it isn't needed by caller here.
  * options:
  * - secure cookie should be SSL only
- * - newSid caller should save the new api/sid cookie on the client
- * - newEid caller should save the new eid cookie on the client
+ * - newSk caller should save the new api/sk cookie on the client
+ * - newEk caller should save the new ek cookie on the client
  * TODO: consider forcing a save based on session create and cookieMaxAge
  */
 function formatMeRestore (session, options) {
-  let sidCookie = cookieSerialize(sidCookieName, session.sid, {
+  let skCookie = cookieSerialize(skCookieName, session.sk, {
     maxAge: cookieMaxAge,
     httpOnly: true,
     secure: options.secure
   })
-  let cookie = [sidCookie.split(';')[0]]
-  let setCookie = options.newSid ? [sidCookie] : []
-  if (options.eid) {
-    let eidCookie = cookieSerialize(eidCookieName, options.eid, {
+  let cookie = [skCookie.split(';')[0]]
+  let setCookie = options.newSk ? [skCookie] : []
+  if (options.ek) {
+    let ekCookie = cookieSerialize(ekCookieName, options.ek, {
       httpOnly: true,
       secure: options.secure
     })
-    cookie.push(eidCookie.split(';')[0])
-    if (options.newEid) setCookie.push(eidCookie)
+    cookie.push(ekCookie.split(';')[0])
+    if (options.newEk) setCookie.push(ekCookie)
   }
   cookie = cookie.join('; ')
   setCookie = (setCookie.length >= 2) ? setCookie : setCookie[0]
@@ -114,22 +114,22 @@ function formatMeRestore (session, options) {
 exports.formatMeRestore = formatMeRestore
 
 /**
- * Helper to extract the (secret) session sid from the request.
+ * Helper to extract the (secret) session sk from the request.
  * Typically this is in a cookie, and we require cookie-parser has already run.
  */
-function reqSessionSid (req) {
-  return req.cookies[sidCookieName] || undefined
+function reqSessionSk (req) {
+  return req.cookies[skCookieName] || undefined
 }
-exports.reqSessionSid = reqSessionSid
+exports.reqSessionSk = reqSessionSk
 
 /**
- * Helper to extract the (secret) evidence eid from the request.
+ * Helper to extract the (secret) evidence ek from the request.
  * Typically this is in a cookie, and we require cookie-parser has already run.
  */
-function reqSessionEid (req) {
-  return req.cookies[eidCookieName] || undefined
+function reqSessionEk (req) {
+  return req.cookies[ekCookieName] || undefined
 }
-exports.reqSessionEid = reqSessionEid
+exports.reqSessionEk = reqSessionEk
 
 /**
  * Helper to find the session that matches the supplied key
@@ -137,26 +137,26 @@ exports.reqSessionEid = reqSessionEid
  * TODO: check session not expired, etc.
  */
 function findAuthorizedSession (req, sessions) {
-  const sid = reqSessionSid(req)
-  return sessions.find(obj => obj.sid && obj.sid === sid)
+  const sk = reqSessionSk(req)
+  return sessions.find(obj => obj.sk && obj.sk === sk)
 }
 exports.findAuthorizedSession = findAuthorizedSession
 
 /**
  * Helper to test if session currently has full access to the user.
- * Specifically tests for valid and recent eid.
+ * Specifically tests for valid and recent ek.
  * @param {*} req Assumes req.session attached via findAuthorizedSession
  * @param {*} user Assumes req.session.user is this and req.session.user is not null
  */
 function hasAccessPrivate (req, user) {
   if (user.session !== req.session.id) return false // logged out or logged into a different session
-  let evidence = req.session.evidence[req.session.evidence.lastIndexOf(obj => obj.eid)] // last issued eid
-  if (!evidence) return false // eid was never issued
-  if (evidence.user !== user.id) return false // no user authenticated when last eid was issued
+  let evidence = req.session.evidence[req.session.evidence.lastIndexOf(obj => obj.ek)] // last issued ek
+  if (!evidence) return false // ek was never issued
+  if (evidence.user !== user.id) return false // no user authenticated when last ek was issued
   let now = Date.now()
   let elapsed = now - (evidence.ts || 0)
-  if (elapsed > eidPrivateMaxElapsedMs) return false // eid has expired for use as private access
-  if (reqSessionEid() !== evidence.eid) return false // the required eid was not supplied
+  if (elapsed > ekPrivateMaxElapsedMs) return false // ek has expired for use as private access
+  if (reqSessionEk() !== evidence.ek) return false // the required ek was not supplied
   return true
 }
 exports.hasAccessPrivate = hasAccessPrivate
