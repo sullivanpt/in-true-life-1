@@ -75,6 +75,8 @@ let cookieMaxAge = 365 * 24 * 60 * 60 * 1000 // 1 year (i.e. forever, longer tra
 let sidCookieName = 'sid'
 let eidCookieName = 'eid'
 
+let eidPrivateMaxElapsedMs = 15 * 60 * 60 * 1000 // 15 minutes until must login again to see private data
+
 /**
  * Reformats the 'me' session response to so the caller (Nuxt UI) has easy access to the valid session cookie
  * Does not send most of the actual session data, since it isn't needed by caller here.
@@ -139,3 +141,22 @@ function findAuthorizedSession (req, sessions) {
   return sessions.find(obj => obj.sid && obj.sid === sid)
 }
 exports.findAuthorizedSession = findAuthorizedSession
+
+/**
+ * Helper to test if session currently has full access to the user.
+ * Specifically tests for valid and recent eid.
+ * @param {*} req Assumes req.session attached via findAuthorizedSession
+ * @param {*} user Assumes req.session.user is this and req.session.user is not null
+ */
+function hasAccessPrivate (req, user) {
+  if (user.session !== req.session.id) return false // logged out or logged into a different session
+  let evidence = req.session.evidence[req.session.evidence.lastIndexOf(obj => obj.eid)] // last issued eid
+  if (!evidence) return false // eid was never issued
+  if (evidence.user !== user.id) return false // no user authenticated when last eid was issued
+  let now = Date.now()
+  let elapsed = now - (evidence.ts || 0)
+  if (elapsed > eidPrivateMaxElapsedMs) return false // eid has expired for use as private access
+  if (reqSessionEid() !== evidence.eid) return false // the required eid was not supplied
+  return true
+}
+exports.hasAccessPrivate = hasAccessPrivate
