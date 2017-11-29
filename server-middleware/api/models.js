@@ -32,6 +32,9 @@ let sessions = [
     sk: 's2-sk', // controls update access and must only be shared with the session owner
     name: 's2-name', // the public display name of the session
     tags: ['robot', 'system'],
+    settings: {
+      cookies: true // user has accepted the cookie policy
+    },
     user: 'u1', // most recently associated user or falsey if purposely logged out (primarily caches whats already in evidence)
     evidence: [{ ts: 123456, ek: 's2-ek2', user: 'u2' }, { ts: 133456, ek: 's2-ek3', user: 'u1' }], // private time ordered list of unique user agent properties
     activity: [{ ts: 123456, action: 'rate', value: 5 }] // private time ordered list of metrics about this session, usually user actions

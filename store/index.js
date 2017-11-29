@@ -7,3 +7,12 @@ export const mutations = {
     state.sidebar = !state.sidebar
   }
 }
+
+export const actions = {
+  /**
+   * Manually delegate nuxtServerInit to interested modules
+   */
+  nuxtServerInit ({ dispatch }) {
+    return dispatch('me/reload')
+  }
+}

@@ -48,8 +48,34 @@ app.use(meVerifySession)
 // TODO: sensitive access middleware on some routes based on ek, etc.
 
 // these end points change the user currently associated with the session
-// e.g. GET '/me/user' POST '/me/user/logout' POST '/me/user/strategies' POST '/me/user/password'
+// e.g. POST '/me/user/logout' POST '/me/user/strategies' POST '/me/user/password'
 app.use('/me/user', authUser)
+
+// end point returns the current session state:
+// - session public details
+// - session settings
+// - public user details
+// public data about the most recently fully authenticated user on the current session
+// if no user has been associated or if the association was purposely removed user is undefined
+//
+// assumes req.session is attached and verified
+app.get('/me/reload', (req, res) => {
+  let session = { id: req.session.id, name: req.session.name }
+  let user
+  if (req.session.user) {
+    user = models.users.find(obj => obj.id === req.session.user)
+    if (!user) throw new Error('invalid session.user')
+    user = { id: user.id, name: user.name }
+  }
+  return res.json({ session, user, settings: req.session.settings })
+})
+
+// end point updates session settings
+// TODO: copy these between sessions on successful login, and maybe clear on logout?
+app.post('/me/settings', (req, res) => {
+  req.session.settings = Object.assign(req.session.settings || {}, req.body) // TODO: validation
+  res.end()
+})
 
 // this end point returns status 401 if the current session no longer has access (or never had access) to the user's private data
 // assumes req.session is attached and verified

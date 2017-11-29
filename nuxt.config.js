@@ -26,6 +26,9 @@ module.exports = {
     // creating one if needed and returning an API token in a cookie.
     '~/server-middleware/session/index.js'
   ],
+  plugins: [
+    '~/plugins/api.js'
+  ],
   /*
   ** Customize the progress-bar color
   */
@@ -35,6 +38,12 @@ module.exports = {
   */
   build: {
     extractCSS: true,
+    /*
+    ** Reload on change. See https://github.com/nuxt/nuxt.js/issues/1819
+     */
+    watch: [
+      'server-middleware'
+    ],
     /*
     ** Run ESLINT on save
     */

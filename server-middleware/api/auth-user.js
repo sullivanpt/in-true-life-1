@@ -20,16 +20,6 @@ router.post('/logout', (req, res) => {
   res.status(204).end() // TODO: do we need/want to request client do a full page refresh here?
 })
 
-// this end point returns public data about the most recently fully authenticated user on the current session
-// if no user has been associated or if the association was purposely removed returns status 404
-// assumes req.session is attached and verified
-router.get('/', (req, res) => {
-  if (!req.session.user) res.status(404).end() // no associated user
-  let user = models.users.find(obj => obj.id === req.session.user)
-  if (!user) throw new Error('invalid session.user')
-  return res.json({ id: user.id, name: user.name })
-})
-
 // get meta-data about enabled auth methods for the requested user id. result set might be empty if nothing enabled.
 // return status 404 for unknown user id, which is OK because user IDs are public anyway.
 // important! uses req.body.user, not req.session.user (user can be changed from current associated user)

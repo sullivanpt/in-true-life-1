@@ -34,10 +34,10 @@
         </div>
       </footer>
     </div>
-    <div v-if="!acceptCookies" class="toast">
+    <div v-if="!cookies" class="toast">
       <div class="row child-shadows">
         <div class="alert alert-primary">
-          <button @click="acceptCookies=true" class="btn-small float-right" title="close">&times;</button>
+          <button @click="acceptCookies()" class="btn-small float-right" title="close">&times;</button>
           <b>Cookies</b> this site uses cookies and other techniques to enforce accountability
           and encourage positive citizenship. <nuxt-link to="policies">Learn more...</nuxt-link>
         </div>
@@ -50,18 +50,24 @@
 export default {
   data () {
     return {
-      acceptCookies: false,
       items: [
         { emoji: '💛', title: 'InTrue.Life', tip: 'Home', to: '/' },
         { emoji: '🔥', title: 'Inspire', tip: 'Match Making', to: '/inspire' },
         { emoji: '🚀', title: 'Optimistic', tip: 'Join the Hopeful', to: '/optimistic' }
-      ],
-      helpItems: [
-        { emoji: '❓', tip: 'Help', to: '/help' },
-        // TODO: create account/not logged in { emoji: '🔓', tip: 'My Account', to: '/account' },
-        { emoji: '🔐', tip: 'My Account', to: '/account' }
       ]
     }
+  },
+  computed: {
+    helpItems () {
+      return [
+        { emoji: '❓', tip: 'Help', to: '/help' },
+        { emoji: this.$store.state.me.userId ? '🔓' : '🔐', tip: 'My Account', to: '/account' }
+      ]
+    },
+    cookies () { return this.$store.state.me.cookies }
+  },
+  methods: {
+    acceptCookies () { this.$store.dispatch('me/acceptCookies') }
   }
 }
 </script>
