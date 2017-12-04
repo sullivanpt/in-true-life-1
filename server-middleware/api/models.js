@@ -9,7 +9,7 @@ let users = [
   { id: 'u1', name: 'u1-name', salt: 'u1-salt', hash: 'u1-hash' }, // see https://www.npmjs.com/package/pbkdf2-password
   {
     id: 'u2',
-    name: 'u2-name',
+    name: 'u2-name', // TODO: if this user name is public we'll need a profanity filter
     session: 's2', // most recently associated session or falsey if purposely logged out (primarily catches multiple session login)
     channels: [
       { device: 'phone-abc', events: [{ type: 'messages', tags: ['alerts'] }] },

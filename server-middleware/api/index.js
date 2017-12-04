@@ -57,17 +57,19 @@ app.use('/me/user', authUser)
 // - public user details
 // public data about the most recently fully authenticated user on the current session
 // if no user has been associated or if the association was purposely removed user is undefined
+// - boolean authorized -- truthy indicates GET /me/private will succeed
 //
 // assumes req.session is attached and verified
 app.get('/me/reload', (req, res) => {
   let session = { id: req.session.id, name: req.session.name }
-  let user
+  let user, authorized
   if (req.session.user) {
     user = models.users.find(obj => obj.id === req.session.user)
     if (!user) throw new Error('invalid session.user')
+    authorized = !hasAccessPrivate(req, user)
     user = { id: user.id, name: user.name }
   }
-  return res.json({ session, user, settings: req.session.settings })
+  return res.json({ session, user, authorized, settings: req.session.settings })
 })
 
 // end point updates session settings

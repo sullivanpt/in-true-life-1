@@ -6,33 +6,23 @@
       and replies, build community trust, protect your identity on public computers, donate
       to maintain and grow this web site.
     </p>
-<div class="row">
-  <div class="col sm-4">
-    <div class="form-group">
-      <label for="name">Public Name</label>
-      <input v-model="name" type="text" id="name">
-    </div>
-  </div>
-  <div class="col sm-4">
-    <div class="form-group">
-      <label for="sessionName">Public ID</label>
-      <input v-model="sessionName" type="text" id="sessionName" disabled readonly>
-    </div>
-  </div></div>
+    <hr>
+    <itl-account-view v-if="userAuthorized"></itl-account-view>
+    <itl-account-login v-else></itl-account-login>
   </div>
 </template>
 
 <script>
+import ItlAccountLogin from '~/components/itl-account-login.vue'
+import ItlAccountView from '~/components/itl-account-view.vue'
+
 export default {
-  data () {
-    return {}
+  components: {
+    ItlAccountLogin,
+    ItlAccountView
   },
   computed: {
-    sessionName () { return this.$store.state.me.sessionName },
-    name: {
-      get: function () { return this.$store.state.me.name },
-      set: function (name) { this.$store.dispatch('me/setName', name) }
-    }
+    userAuthorized () { return this.$store.state.me.userAuthorized }
   }
 }
 </script>
