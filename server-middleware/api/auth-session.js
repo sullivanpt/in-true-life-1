@@ -2,16 +2,8 @@
 'use strict'
 const uuidV4 = require('uuid/v4')
 const uid = require('uid-safe')
-const { reqSessionEk, findAuthorizedSession, formatMeRestore } = require('./auth')
+const { generateTracker, reqSessionEk, findAuthorizedSession, formatMeRestore } = require('./auth')
 const models = require('./models')
-
-/**
- * generate a short but statistically probably unique ID string. See http://stackoverflow.com/a/8084248
- * TODO: use thematic dictionary instead, e.g. cat breeds....
- */
-function generateTracker () {
-  return (Math.random() + 1).toString(36).substr(2, 5)
-}
 
 // expects to be mounted at POST '/me/restore'
 // this end point will accept a missing or invalid session sk and return a new or prexisting valid one
@@ -33,7 +25,9 @@ function meRestoreHandler (req, res) {
       evidence: [Object.assign({
         ts: Date.now(),
         ek
-      }, req.body)] // TODO: sanitize this
+      }, req.body)], // TODO: sanitize this
+      logins: [], // default values follow
+      activity: []
     }
     req.logId = session.name
     models.sessions.push(session)

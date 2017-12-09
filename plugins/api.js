@@ -39,17 +39,26 @@ export default ({ req, isServer }, inject) => {
     meReload () {
       return buildFetch('/api/me/reload')
     },
+    meForget (credentials) {
+      return buildFetch('/api/me/user/forget', 'POST', credentials)
+    },
+    meLogout () {
+      return buildFetch('/api/me/user/logout', 'POST')
+    },
+    meLock () {
+      return buildFetch('/api/me/user/lock', 'POST')
+    },
     meCreate (credentials) {
       return buildFetch('/api/me/user/create', 'POST', credentials)
     },
     meStrategies (name) {
       return buildFetch('/api/me/user/strategies', 'POST', { name })
     },
-    meLogout () {
-      return buildFetch('/api/me/user/logout', 'POST')
-    },
     mePassword (credentials) {
       return buildFetch('/api/me/user/password', 'POST', credentials)
+    },
+    mePrivateGet () {
+      return buildFetch('/api/me/private', 'GET')
     },
     meSaveSetting (settings) {
       return buildFetch('/api/me/settings', 'POST', settings)

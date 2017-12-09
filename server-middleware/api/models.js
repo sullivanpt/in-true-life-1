@@ -12,10 +12,11 @@ let users = [
     name: 'u2-name', // TODO: if this user name is public we'll need a profanity filter
     session: 's2', // most recently associated session or falsey if purposely logged out (primarily catches multiple session login)
     channels: [
-      { device: 'phone-abc', events: [{ type: 'messages', tags: ['alerts'] }] },
+      { device: 'phone-abc', events: [ 'password', 'mentions' ] },
       { email: 'u2@mail.com', verified: 123456 }
     ]
-  }
+  },
+  { id: 'u3', name: 'u3-name', disabled: 'forget' }
 ]
 exports.users = users
 
@@ -24,9 +25,15 @@ exports.users = users
  *
  * tracks activity metrics, emotional feedback, etc.
  * can be associated with mutiple users, e.g. public terminal.
+ *
+ * TODO: invert this into more traditional sessions based on short life key and 'clients' based
+ * on long life key. client keeps settings, active login, logging/identity name.  session keeps
+ * shareded arrays that grow unbounded. better performance, access to traditional auth libraries
+ * like passport, ability to use non-cookie trackers as primary client matcher, and not too much
+ * more complex.
  */
 let sessions = [
-  { id: 's1', sk: 's1-sk', name: 's1-name', evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }] },
+  { id: 's1', sk: 's1-sk', name: 's1-name', users: [], evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }], activity: [] },
   {
     id: 's2', // the public key for read access to the session
     sk: 's2-sk', // controls update access and must only be shared with the session owner
@@ -35,11 +42,16 @@ let sessions = [
     settings: {
       cookies: true // user has accepted the cookie policy
     },
-    user: 'u1', // most recently associated user or falsey if purposely logged out (primarily caches whats already in evidence)
-    evidence: [{ ts: 123456, ek: 's2-ek2', user: 'u2' }, { ts: 133456, ek: 's2-ek3', user: 'u1' }], // private time ordered list of unique user agent properties
+    logins: [ // most recently associated user
+      { ts: 123456, ek: 's2-ek2', user: 'u2' }, // login as u1 (tied to ek)
+      { ts: 123466, user: 'u2' }, // lock (no-ek)
+      { ts: 123476 }, // logout (no user)
+      { ts: 133456, ek: 's2-ek3', user: 'u1' } // login as u2, eventually expired
+    ],
+    evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }], // private time ordered list of unique user agent properties, ek regenerated on change
     activity: [{ ts: 123456, action: 'rate', value: 5 }] // private time ordered list of metrics about this session, usually user actions
   },
-  { id: 's3', sk: 's3-sk', name: 's3-name' }
+  { id: 's3', sk: 's3-sk', name: 's3-name', users: [], evidence: [], activity: [] }
 ]
 exports.sessions = sessions
 

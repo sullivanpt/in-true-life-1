@@ -5,8 +5,7 @@ export const state = () => ({
   userId: null,
   sessionName: '',
   userName: '',
-  userAuthorized: false,
-  email: 'test@test.com' // TODO: generic notifications
+  userAuthorized: false
 })
 
 export const mutations = {
@@ -28,9 +27,9 @@ export const actions = {
     let r = await this.$api.meReload()
     if (!r.ok) {
       console.log('reload', r) // TODO: error handling and logging
+      return true // failure result for login/logout
     } else {
       commit('reload', await r.json())
-      return true // success result for login/logout
     }
   },
   async acceptCookies ({ commit }) {
@@ -44,6 +43,7 @@ export const actions = {
     let r = await this.$api.meCreate(credentials)
     if (!r.ok) { // TODO: status 400, 403, 409 are different
       console.log('create', r) // TODO: error handling and logging
+      return true // failure result for login/logout
     } else {
       return dispatch('reload')
     }
@@ -52,6 +52,15 @@ export const actions = {
     let r = await this.$api.mePassword(credentials)
     if (!r.ok) {
       console.log('login', r) // TODO: error handling and logging
+      return true // failure result for login/logout
+    } else {
+      return dispatch('reload')
+    }
+  },
+  async lock ({ dispatch }, credentials) {
+    let r = await this.$api.meLock(credentials)
+    if (!r.ok) {
+      console.log('lock', r) // TODO: error handling and logging
     } else {
       return dispatch('reload')
     }
@@ -60,6 +69,15 @@ export const actions = {
     let r = await this.$api.meLogout(credentials)
     if (!r.ok) {
       console.log('logout', r) // TODO: error handling and logging
+    } else {
+      return dispatch('reload')
+    }
+  },
+  async forget ({ dispatch }, credentials) {
+    let r = await this.$api.meForget(credentials)
+    if (!r.ok) {
+      console.log('forget', r) // TODO: error handling and logging
+      return true
     } else {
       return dispatch('reload')
     }

@@ -70,12 +70,22 @@
 'use strict'
 
 const { cookieSerialize } = require('../helpers/express-patches')
+const last = require('lodash/last')
 
 let cookieMaxAge = 365 * 24 * 60 * 60 * 1000 // 1 year (i.e. forever, longer tracks the user agent longer)
 let skCookieName = 'sk' // secret sessIon key
 let ekCookieName = 'ek' // secret evidence key
 
 let ekPrivateMaxElapsedMs = 15 * 60 * 60 * 1000 // 15 minutes until must login again to see private data
+
+/**
+ * generate a short but statistically probably unique ID string. See http://stackoverflow.com/a/8084248
+ * TODO: use thematic dictionary instead, e.g. cat breeds....
+ */
+function generateTracker () {
+  return (Math.random() + 1).toString(36).substr(2, 5)
+}
+exports.generateTracker = generateTracker
 
 /**
  * Reformats the 'me' session response to so the caller (Nuxt UI) has easy access to the valid session cookie
@@ -143,20 +153,38 @@ function findAuthorizedSession (req, sessions) {
 exports.findAuthorizedSession = findAuthorizedSession
 
 /**
- * Helper to test if session currently has full access to the user.
- * Specifically tests for valid and recent ek.
- * @param {*} req Assumes req.session attached via findAuthorizedSession
- * @param {*} user Assumes req.session.user is this and req.session.user is not null
+ * helper to attach user to session
+ * called when creating a new user or logging in an existing user
  */
-function hasAccessPrivate (req, user) {
-  if (user.session !== req.session.id) return false // logged out or logged into a different session
-  let evidence = req.session.evidence[req.session.evidence.lastIndexOf(obj => obj.ek)] // last issued ek
-  if (!evidence) return false // ek was never issued
-  if (evidence.user !== user.id) return false // no user authenticated when last ek was issued
-  let now = Date.now()
-  let elapsed = now - (evidence.ts || 0)
-  if (elapsed > ekPrivateMaxElapsedMs) return false // ek has expired for use as private access
-  if (reqSessionEk() !== evidence.ek) return false // the required ek was not supplied
-  return true
+function attachUserToSession (req, user) {
+  // user credentials are verified, update session data
+  // TODO: evidence in the next /me/restore is going to cause this new evidence to get discarded
+  req.session.logins.push({
+    ts: Date.now(),
+    ek: reqSessionEk(req),
+    user: user.id
+  })
+  user.session = req.session.id
 }
-exports.hasAccessPrivate = hasAccessPrivate
+exports.attachUserToSession = attachUserToSession
+
+/**
+ * helper to retrieve the last login and user attached to a session that was not logged out
+ * assumes req.session is attached and verified
+ */
+function findUserOnSession (req, users) {
+  let login = last(req.session.logins) // most recent login, lock, or logout
+  if (!login || !login.user) return {} // never logged in or logged out
+  let user = users.find(obj => obj.id === login.user)
+  if (!user) throw new Error('invalid session.login[].user')
+  if (user.session !== req.session.id) return { user } // user has since logged into a different session
+  if (!login.ek || reqSessionEk(req) !== login.ek) return { user } // the ek was not supplied or has since changed
+  let now = Date.now()
+  let elapsed = now - (login.ts || 0)
+  if (elapsed > ekPrivateMaxElapsedMs) return { user } // login has expired for use as private access
+  return {
+    authorized: true,
+    user
+  }
+}
+exports.findUserOnSession = findUserOnSession

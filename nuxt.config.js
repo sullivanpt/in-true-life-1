@@ -42,7 +42,7 @@ module.exports = {
     ** Reload on change. See https://github.com/nuxt/nuxt.js/issues/1819
      */
     watch: [
-      'server-middleware'
+      'server-middleware' // TODO: broken, does something on change but doesn't reload api middleware
     ],
     /*
     ** Run ESLINT on save

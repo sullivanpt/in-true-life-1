@@ -4,7 +4,7 @@
 const app = require('express')()
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
-const { reqSessionEk, hasAccessPrivate } = require('./auth')
+const { reqSessionEk, findUserOnSession } = require('./auth')
 const { meRestoreHandler, meVerifySession } = require('./auth-session')
 const authUser = require('./auth-user')
 const models = require('./models')
@@ -62,13 +62,8 @@ app.use('/me/user', authUser)
 // assumes req.session is attached and verified
 app.get('/me/reload', (req, res) => {
   let session = { id: req.session.id, name: req.session.name }
-  let user, authorized
-  if (req.session.user) {
-    user = models.users.find(obj => obj.id === req.session.user)
-    if (!user) throw new Error('invalid session.user')
-    authorized = !hasAccessPrivate(req, user)
-    user = { id: user.id, name: user.name }
-  }
+  let { user, authorized } = findUserOnSession(req, models.users)
+  if (user) user = { id: user.id, name: user.name }
   return res.json({ session, user, authorized, settings: req.session.settings })
 })
 
@@ -76,18 +71,21 @@ app.get('/me/reload', (req, res) => {
 // TODO: copy these between sessions on successful login, and maybe clear on logout?
 app.post('/me/settings', (req, res) => {
   req.session.settings = Object.assign(req.session.settings || {}, req.body) // TODO: validation
+  req.session.activity.push(Object.assign({ ts: Date.now(), action: 'settings' }, req.body)) // keep change history, especially cookies acceptance
   res.end()
 })
 
 // this end point returns status 401 if the current session no longer has access (or never had access) to the user's private data
 // assumes req.session is attached and verified
+// TODO: maybe also return login strategies we can add to our existing account here?
 app.get('/me/private', (req, res) => {
-  if (!req.session.user) return res.status(404).end() // no associated user
-  let user = models.users.find(obj => obj.id === req.session.user)
-  if (!user) throw new Error('invalid session.user')
-  if (!hasAccessPrivate(req, user)) return res.status(401).end()
-  return res.json(user) // this is the happy path
+  let { user, authorized } = findUserOnSession(req, models.users)
+  if (!user) return res.status(404).end() // no associated user
+  if (!authorized) return res.status(401).end()
+  return res.json({ id: user.id, name: user.name, channels: user.channels || [] }) // this is the happy path
 })
+
+// TODO: POST /me/private/password, /me/private/delete, /me/private/channels, and /me/user/lock
 
 restify('users', models.users)
 restify('sessions', models.sessions)
