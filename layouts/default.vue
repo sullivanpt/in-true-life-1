@@ -6,6 +6,7 @@
           <div class="float-right">
             <nuxt-link
               class="nav-link"
+              :class="[item.animate]"
               :title="item.tip"
               :key="i"
               v-for="(item, i) in helpItems"
@@ -59,10 +60,12 @@ export default {
   },
   computed: {
     helpItems () {
-      return [
+      return (this.$store.state.me.alerts ? [
+        { emoji: '🔔', animate: this.$store.state.me.alerted ? 'anim-shake' : '', tip: 'Alerts', to: '/alerts' }
+      ] : []).concat([
         { emoji: '❓', tip: 'Help', to: '/help' },
         { emoji: this.$store.state.me.userId ? '🔓' : '🔐', tip: 'My Account', to: '/account' }
-      ]
+      ])
     },
     cookies () { return this.$store.state.me.cookies }
   },
@@ -95,5 +98,19 @@ a.nuxt-link-active {
   .hide-xsmall {
     display: none;
   }
+}
+@keyframes shake {
+  30% { transform: rotate(0deg); }
+  40% { transform: rotate(20deg); }
+  50% { transform: rotate(-20deg); }
+  60% { transform: rotate(20deg); }
+  70% { transform: rotate(-20deg); }
+  80% { transform: rotate(0deg); }
+}
+.anim-shake {
+  display: inline-block;
+  animation-name: shake;
+  animation-duration: 10s;
+  animation-iteration-count: infinite;
 }
 </style>

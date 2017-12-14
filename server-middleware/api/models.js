@@ -33,14 +33,15 @@ exports.users = users
  * more complex.
  */
 let sessions = [
-  { id: 's1', sk: 's1-sk', name: 's1-name', users: [], evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }], activity: [] },
+  { id: 's1', sk: 's1-sk', name: 's1-name', logins: [], evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }], activity: [] },
   {
     id: 's2', // the public key for read access to the session
     sk: 's2-sk', // controls update access and must only be shared with the session owner
     name: 's2-name', // the public display name of the session
-    tags: ['robot', 'system'],
+    tags: ['robot', 'system'], // both permission group and a public classification
     settings: {
-      cookies: true // user has accepted the cookie policy
+      cookies: true, // user has accepted the cookie policy
+      seen: 123456 // timestamp of last message seen (optimize login search)
     },
     logins: [ // most recently associated user
       { ts: 123456, ek: 's2-ek2', user: 'u2' }, // login as u1 (tied to ek)
@@ -51,7 +52,7 @@ let sessions = [
     evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }], // private time ordered list of unique user agent properties, ek regenerated on change
     activity: [{ ts: 123456, action: 'rate', value: 5 }] // private time ordered list of metrics about this session, usually user actions
   },
-  { id: 's3', sk: 's3-sk', name: 's3-name', users: [], evidence: [], activity: [] }
+  { id: 's3', sk: 's3-sk', name: 's3-name', logins: [], evidence: [], activity: [] }
 ]
 exports.sessions = sessions
 
@@ -62,8 +63,16 @@ exports.sessions = sessions
  * individual read/reply, but group send targeting for system alerts/tos changes/etc.
  */
 let messages = [
-  { id: 'm1', name: 'm1-name', fromSession: 's2', toSession: 's1' },
-  { id: 'm2', name: 'm2-name', fromSession: 's2', toSessions: 'all' }
+  { ts: Date.now(), id: 'm1', text: 'm1-text', fromSession: 's2', toUser: 'u1' },
+  {
+    ts: 123456,
+    expires: 123456789, // null or when this message becomes "removed"
+    id: 'm2',
+    title: 'm2-title',
+    text: 'descriptive text', // markdown
+    fromSession: 's2', // maybe fromUser?
+    toSessions: 'all' // one of: toSession, toSessions, toUser, toTag
+  }
 ]
 exports.messages = messages
 

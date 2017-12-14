@@ -60,6 +60,9 @@ export default ({ req, isServer }, inject) => {
     mePrivateGet () {
       return buildFetch('/api/me/private', 'GET')
     },
+    meAlertsGet () {
+      return buildFetch('/api/me/alerts', 'GET')
+    },
     meSaveSetting (settings) {
       return buildFetch('/api/me/settings', 'POST', settings)
     }

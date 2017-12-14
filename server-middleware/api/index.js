@@ -4,6 +4,8 @@
 const app = require('express')()
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
+const get = require('lodash/get')
+const keyBy = require('lodash/keyby')
 const { reqSessionEk, findUserOnSession } = require('./auth')
 const { meRestoreHandler, meVerifySession } = require('./auth-session')
 const authUser = require('./auth-user')
@@ -19,6 +21,36 @@ function restify (resource, list) {
     if (result) res.json(result)
     else res.status(404).end()
   })
+}
+
+/**
+ * helper to return unread messages for session
+ * user can be null or the current user for the session
+ */
+function findMessages (session, user, now = Date.now()) {
+  let expiration = 7 * 24 * 60 * 60 * 1000 // messages expire 7 days after being seen
+  let seen = get(session, 'settings.seen', expiration) // messages sent after this are 'new'
+  let expired = seen - expiration // messages sent after this are deleted
+  return models.messages.filter(obj =>
+    (!obj.expires || obj.expires > now) && // not 'removed'
+    obj.ts > expired && // not seen so long ago it's hidden
+    (obj.toSession === session.id || // to this session
+      (user && obj.toUser === user.id) || // to this user
+      obj.toSessions === 'all' || // to all sessions
+      (obj.toTag && get(user, 'tags', []).includes(obj.toTag))) // to all users with given tag, e.g. 'support'
+  )
+}
+
+/**
+ * helper to return
+ * - are there unseen/new messages
+ * - are there seen but not expired messages
+ */
+function checkMessages (session, user) {
+  let messages = findMessages(session, user)
+  let seen = get(session, 'settings.seen', 0) // messages sent after this are 'new'
+  let unseen = messages.filter(obj => obj.ts > seen)
+  return { alerts: messages.length, alerted: unseen.length }
 }
 
 /**
@@ -63,8 +95,9 @@ app.use('/me/user', authUser)
 app.get('/me/reload', (req, res) => {
   let session = { id: req.session.id, name: req.session.name }
   let { user, authorized } = findUserOnSession(req, models.users)
-  if (user) user = { id: user.id, name: user.name }
-  return res.json({ session, user, authorized, settings: req.session.settings })
+  let { alerts, alerted } = checkMessages(req.session, user)
+  if (user) user = { id: user.id, name: user.name, tags: user.tags }
+  return res.json({ session, user, authorized, settings: req.session.settings, alerts, alerted })
 })
 
 // end point updates session settings
@@ -75,6 +108,20 @@ app.post('/me/settings', (req, res) => {
   res.end()
 })
 
+// end point to retrieve alerts
+app.get('/me/alerts', (req, res) => {
+  let { user } = findUserOnSession(req, models.users)
+  let messages = findMessages(req.session, user)
+  req.session.settings = Object.assign(req.session.settings || {}, { seen: Date.now() }) // updates last read
+  // TODO: do not populate the response with user and session names
+  let users = keyBy(models.users, 'id')
+  let sessions = keyBy(models.sessions, 'id')
+  messages = messages.map(obj => Object.assign({
+    name: sessions[obj.fromSession].name || users[obj.fromUser].name || 'anonymous'
+  }, obj))
+  res.json({ messages })
+})
+
 // this end point returns status 401 if the current session no longer has access (or never had access) to the user's private data
 // assumes req.session is attached and verified
 // TODO: maybe also return login strategies we can add to our existing account here?
@@ -82,7 +129,7 @@ app.get('/me/private', (req, res) => {
   let { user, authorized } = findUserOnSession(req, models.users)
   if (!user) return res.status(404).end() // no associated user
   if (!authorized) return res.status(401).end()
-  return res.json({ id: user.id, name: user.name, channels: user.channels || [] }) // this is the happy path
+  return res.json({ id: user.id, name: user.name, channels: user.channels || [] })
 })
 
 // TODO: POST /me/private/password, /me/private/delete, /me/private/channels, and /me/user/lock

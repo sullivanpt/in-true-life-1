@@ -4,6 +4,8 @@ export const state = () => ({
   cookies: false,
   userId: null,
   sessionName: '',
+  alerts: false,
+  alerted: false, // TODO: need to push/pull alerts and alerted, currently only updates on page refresh
   userName: '',
   userAuthorized: false
 })
@@ -13,8 +15,13 @@ export const mutations = {
     state.cookies = !!(data.settings && data.settings.cookies)
     state.userId = data.user ? data.user.id : null
     state.sessionName = (data.session && data.session.name) || ''
+    state.alerts = !!data.alerts
+    state.alerted = !!data.alerted
     state.userName = (data.user && data.user.name) || ''
     state.userAuthorized = !!data.authorized
+  },
+  clearAlerted (state) {
+    state.alerted = false
   },
   acceptCookies (state) {
     state.cookies = true

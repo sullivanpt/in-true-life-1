@@ -83,7 +83,7 @@ router.post('/create', (req, res) => {
   }
   models.users.push(user)
   attachUserToSession(req, user)
-  res.status(201).json({ id: user.id, name: user.name })
+  res.status(201).json({ id: user.id, name: user.name, tags: user.tags || [] })
 })
 
 // get meta-data about enabled auth methods for the requested user id. result set might be empty if nothing enabled.
