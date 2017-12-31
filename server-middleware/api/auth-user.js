@@ -46,6 +46,7 @@ router.post('/logout', (req, res) => {
   user.session = null
   req.session.logins.push({ ts: Date.now() })
   req.session.settings = {} // clear settings. TODO: do we want to only clear some settings?
+  req.session.seen = 0
   res.status(204).end() // TODO: do we need/want to request client do a full page refresh here?
 })
 
@@ -79,7 +80,9 @@ router.post('/create', (req, res) => {
     id: 's-' + uuidV4(),
     name,
     hash: req.body.password, // TODO: real password hashing with salt
-    salt: null
+    salt: null,
+    // default values follow
+    seen: 0
   }
   models.users.push(user)
   attachUserToSession(req, user)

@@ -27,7 +27,8 @@ module.exports = {
     '~/server-middleware/session/index.js'
   ],
   plugins: [
-    '~/plugins/api.js'
+    '~/plugins/api.js',
+    { src: '~/plugins/medium-editor.js', ssr: false }
   ],
   /*
   ** Customize the progress-bar color

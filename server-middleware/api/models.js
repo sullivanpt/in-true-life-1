@@ -6,17 +6,21 @@
  * includes admins, system, robots, persons, etc.
  */
 let users = [
-  { id: 'u1', name: 'u1-name', salt: 'u1-salt', hash: 'u1-hash' }, // see https://www.npmjs.com/package/pbkdf2-password
+  { id: 'u1', name: 'u1-name', seen: 0, salt: 'u1-salt', hash: 'u1-hash' }, // see https://www.npmjs.com/package/pbkdf2-password
   {
     id: 'u2',
-    name: 'u2-name', // TODO: if this user name is public we'll need a profanity filter
+    // TODO: if this user name is public we'll need a profanity filter, and/or not reviewed yet delay
+    // TODO: need mechanism to hide a profane name detected after the fact, without changing the login name the user knows
+    // TODO: need a history of all past names to show in public user details
+    name: 'u2-name',
     session: 's2', // most recently associated session or falsey if purposely logged out (primarily catches multiple session login)
+    seen: 123456, // timestamp of last message seen (optimize login search)
     channels: [
       { device: 'phone-abc', events: [ 'password', 'mentions' ] },
       { email: 'u2@mail.com', verified: 123456 }
     ]
   },
-  { id: 'u3', name: 'u3-name', disabled: 'forget' }
+  { id: 'u3', name: 'u3-name', seen: 0, disabled: 'forget' }
 ]
 exports.users = users
 
@@ -30,18 +34,19 @@ exports.users = users
  * on long life key. client keeps settings, active login, logging/identity name.  session keeps
  * shareded arrays that grow unbounded. better performance, access to traditional auth libraries
  * like passport, ability to use non-cookie trackers as primary client matcher, and not too much
- * more complex.
+ * more complex. However, the primary difficulty is it would require updating client cookies on
+ * login/logout, which would require a full page client refresh with a synchronization token.
  */
 let sessions = [
-  { id: 's1', sk: 's1-sk', name: 's1-name', logins: [], evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }], activity: [] },
+  { id: 's1', sk: 's1-sk', name: 's1-name', seen: 0, logins: [], evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }], activity: [] },
   {
     id: 's2', // the public key for read access to the session
     sk: 's2-sk', // controls update access and must only be shared with the session owner
     name: 's2-name', // the public display name of the session
     tags: ['robot', 'system'], // both permission group and a public classification
+    seen: 123456, // timestamp of last message seen (optimize login search)
     settings: {
-      cookies: true, // user has accepted the cookie policy
-      seen: 123456 // timestamp of last message seen (optimize login search)
+      cookies: true // user has accepted the cookie policy
     },
     logins: [ // most recently associated user
       { ts: 123456, ek: 's2-ek2', user: 'u2' }, // login as u1 (tied to ek)
@@ -52,7 +57,7 @@ let sessions = [
     evidence: [{ ts: 123456, ek: 's1-ek1', ipAddress: '1.2.3.4' }], // private time ordered list of unique user agent properties, ek regenerated on change
     activity: [{ ts: 123456, action: 'rate', value: 5 }] // private time ordered list of metrics about this session, usually user actions
   },
-  { id: 's3', sk: 's3-sk', name: 's3-name', logins: [], evidence: [], activity: [] }
+  { id: 's3', sk: 's3-sk', name: 's3-name', seen: 0, logins: [], evidence: [], activity: [] }
 ]
 exports.sessions = sessions
 
@@ -104,7 +109,7 @@ let profiles = [
 
     id: 'p1',
     title: 'p1-title',
-    author: 's1',
+    author: 's1', // TODO: maybe include user ID to for easier tracking
     type: 'SINGLE',
     text: 'descriptive text', // markdown
     photos: ['http://images.fonearena.com/blog/wp-content/uploads/2013/11/Lenovo-p780-camera-sample-10.jpg']
@@ -130,7 +135,7 @@ let comments = [
   {
     id: 'c2',
     title: 'c2-title',
-    author: 's2',
+    author: 's2', // TODO: maybe include user ID to for easier tracking
     about: ['p1', 'p2'],
     as: 'p3',
     text: 'descriptive text' // markdown

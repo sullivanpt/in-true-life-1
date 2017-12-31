@@ -26,7 +26,7 @@
         <span v-else-if="!originalEmail">My Account Recovery Email <small class="text-muted">we do not spam you, nor will we share your email with advertisers</small></span>
         <span v-else>My Email <small v-if="emailVerified" class="text-success">verified</small></span>
       </label>
-      <input @blur="changeEmail" v-model="email" type="text" id="email" :disabled="pending">
+      <input @blur="changeEmail" v-model="email" type="email" id="email" :disabled="pending">
     </div>
     <fieldset class="form-group" v-if="email">
       <label for="email-password-reset" class="paper-check">

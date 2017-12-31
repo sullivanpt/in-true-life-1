@@ -1,0 +1,33 @@
+@import 'medium-editor/dist/css/medium-editor.css';
+
+// lifted from medium-editor.css textarea and .form-group textarea
+.input-medium {
+  display: block;
+  background: 0 0;
+  color: #41403e;
+  outline: 0;
+  border-top-left-radius: 255px 15px;
+  border-top-right-radius: 15px 225px;
+  border-bottom-right-radius: 225px 15px;
+  border-bottom-left-radius: 15px 255px;
+  font-size: 1rem;
+  padding: .5rem .5rem;
+  border: 2px solid #41403e
+}
+.form-group .input-medium {
+  max-width: 100%;
+  max-height: 90vh
+}
+.medium-editor-toolbar,
+.medium-editor-toolbar-form {
+  li:before { // undo papercss ul
+    left: 0;
+    content: ''
+  }
+  padding: 0;
+  background-color: #fff;
+}
+.medium-editor-toolbar-anchor-preview {
+  background: #007de0;
+  color: #fff;
+}

@@ -26,7 +26,9 @@ function meRestoreHandler (req, res) {
         ts: Date.now(),
         ek
       }, req.body)], // TODO: sanitize this
-      logins: [], // default values follow
+      // default values follow
+      seen: 0,
+      logins: [],
       activity: []
     }
     req.logId = session.name

@@ -65,6 +65,9 @@ export default ({ req, isServer }, inject) => {
     },
     meSaveSetting (settings) {
       return buildFetch('/api/me/settings', 'POST', settings)
+    },
+    profileCreate (profile) {
+      return buildFetch('/api/profiles', 'POST', profile)
     }
   })
 }

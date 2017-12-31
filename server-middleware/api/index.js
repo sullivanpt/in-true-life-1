@@ -10,6 +10,7 @@ const { reqSessionEk, findUserOnSession } = require('./auth')
 const { meRestoreHandler, meVerifySession } = require('./auth-session')
 const authUser = require('./auth-user')
 const models = require('./models')
+const uuidV4 = require('uuid/v4')
 
 /**
  * Helper to generate REST GET list and GET instance end points
@@ -29,8 +30,8 @@ function restify (resource, list) {
  */
 function findMessages (session, user, now = Date.now()) {
   let expiration = 7 * 24 * 60 * 60 * 1000 // messages expire 7 days after being seen
-  let seen = get(session, 'settings.seen', expiration) // messages sent after this are 'new'
-  let expired = seen - expiration // messages sent after this are deleted
+  let seen = user ? user.seen : session.seen // messages sent after this are 'new'
+  let expired = (seen > expiration) ? seen - expiration : 0 // messages sent after this are deleted
   return models.messages.filter(obj =>
     (!obj.expires || obj.expires > now) && // not 'removed'
     obj.ts > expired && // not seen so long ago it's hidden
@@ -48,7 +49,7 @@ function findMessages (session, user, now = Date.now()) {
  */
 function checkMessages (session, user) {
   let messages = findMessages(session, user)
-  let seen = get(session, 'settings.seen', 0) // messages sent after this are 'new'
+  let seen = user ? user.seen : session.seen // messages sent after this are 'new'
   let unseen = messages.filter(obj => obj.ts > seen)
   return { alerts: messages.length, alerted: unseen.length }
 }
@@ -112,7 +113,9 @@ app.post('/me/settings', (req, res) => {
 app.get('/me/alerts', (req, res) => {
   let { user } = findUserOnSession(req, models.users)
   let messages = findMessages(req.session, user)
-  req.session.settings = Object.assign(req.session.settings || {}, { seen: Date.now() }) // updates last read
+  // updates last read. either for assoc user or base session
+  if (user) user.seen = req.session.seen
+  else req.session.seen = Date.now()
   // TODO: do not populate the response with user and session names
   let users = keyBy(models.users, 'id')
   let sessions = keyBy(models.sessions, 'id')
@@ -133,6 +136,18 @@ app.get('/me/private', (req, res) => {
 })
 
 // TODO: POST /me/private/password, /me/private/delete, /me/private/channels, and /me/user/lock
+
+// end point to create a new profile
+// required: type, title, text
+// optional: edits, photos, videos
+app.post('/profiles', (req, res) => {
+  let profile = Object.assign({}, req.body, { // TODO: sanitize this
+    id: 'p-' + uuidV4(),
+    author: req.session.id,
+    user: findUserOnSession(req, models.users).user // optionally keep user reference
+  })
+  res.status(201).json(profile)
+})
 
 restify('users', models.users)
 restify('sessions', models.sessions)
