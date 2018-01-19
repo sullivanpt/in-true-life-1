@@ -9,7 +9,7 @@ if (host === '0.0.0.0') {
 }
 const baseUrl = `http://${host}:${port}`
 
-export default ({ req, isServer }, inject) => {
+export default ({ req }, inject) => {
   /**
    * Build an authorized fetch to our local API
    * @param {*} resource the API end point
