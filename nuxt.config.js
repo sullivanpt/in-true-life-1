@@ -14,7 +14,10 @@ module.exports = {
     ]
   },
   css: [
-    '~/assets/style/app.less'
+    '~/assets/style/app.scss'
+  ],
+  sassResources: [ // see 'nuxt-sass-resources-loader'
+    '@/assets/style/_vars.scss'
   ],
   serverMiddleware: [
     // See API authentication design comments at top of sever-middleware/api/auth.js file
@@ -29,6 +32,9 @@ module.exports = {
   plugins: [
     '~/plugins/api.js',
     { src: '~/plugins/medium-editor.js', ssr: false }
+  ],
+  modules: [
+    'nuxt-sass-resources-loader'
   ],
   /*
   ** Customize the progress-bar color

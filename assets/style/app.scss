@@ -1,4 +1,5 @@
 // app specific styling
 
+@import '_vars.scss';
 @import 'papercss/dist/paper.css';
-@import 'medium-editor.less';
+@import 'medium-editor.scss';
